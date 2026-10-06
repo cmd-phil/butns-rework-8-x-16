@@ -1,26 +1,39 @@
 // Btns 0.6
 // by Leo Kuroshita for Hügelton instruments, modified by jhbruhn.
-// Modified to include MPU-6050 tilt support
+// 16x8 variant: 8 rows x 16 columns, 128 SK6812 LEDs, no tilt sensor.
 
 #include "MonomeSerialDevice.h"
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
 #include <Adafruit_NeoPixel.h>
-#include <Wire.h>
 
 #define NUM_ROWS 8
-#define NUM_COLS 8
-#define BRIGHTNESS 127
+#define NUM_COLS 16
+#define NUM_LEDS (NUM_ROWS * NUM_COLS)
+#define LED_PIN 28
 
+// 0 = USB connector on the left (default), 2 = rotated by 180 degrees.
+// Hold the top-left key (default) or the bottom-right key (180 degrees) while plugging in.
 #define DEFAULT_ROTATION 0
 #define DEFAULT_FLIP_HORIZONTAL false
 #define DEFAULT_FLIP_VERTICAL false
 
-const uint8_t ROW_PINS[NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7};  // GPIO00-GPIO07
-const uint8_t COL_PINS[NUM_COLS] = {8, 9, 10, 11, 12, 13, 14, 15};  // GPIO8-GPIO15
-const uint8_t gammaTable[16] = { 0,  2,  3,  6,  11, 18, 25, 32, 41, 59, 70, 80, 92, 103, 115, 127}; 
+// LED power budget. SK6812-EC20: 12 mA per colour channel at full scale, about 1 mA idle per LED.
+// All values of a frame are scaled down together if the estimate exceeds the budget.
+#define LED_MA_PER_CHANNEL 12
+#define LED_MA_IDLE 1
+#define MAX_LED_CURRENT_MA 400
+
+// Matrix timing in microseconds
+#define COL_SETTLE_US 5
+#define COL_RELEASE_US 20
+
+// SW_ROW_1..8 -> GPIO0..7
+const uint8_t ROW_PINS[NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7};
+// SW_COL_1..16, physical order left to right.
+// Columns 1-7: GPIO8-14, columns 8-15: GPIO16-22 and GPIO26, column 16: GPIO15.
+const uint8_t COL_PINS[NUM_COLS] = {8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 26, 15};
+const uint8_t gammaTable[16] = { 0,  2,  3,  6,  11, 18, 25, 32, 41, 59, 70, 80, 92, 103, 115, 127};
 const uint8_t gammaAdj = 2;
 
 bool isInited = false;
@@ -31,86 +44,65 @@ char mfgstr[32] = "monome";
 char prodstr[32] = "monome";
 char serialstr[32] = "m4216124";
 
-Adafruit_NeoPixel pixels(NUM_ROWS * 8, 28, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 MonomeSerialDevice mdp;
-Adafruit_MPU6050 mpu;
 
 bool buttonStates[NUM_ROWS][NUM_COLS] = {0};
+uint32_t rowMask = 0;
 
 int gridRotation = DEFAULT_ROTATION;
 bool flipHorizontal = DEFAULT_FLIP_HORIZONTAL;
 bool flipVertical = DEFAULT_FLIP_VERTICAL;
 
-bool hasTiltSensor = false;
-
-void sendTiltData();
 void updateLEDMatrix();
 void scanButtonMatrix();
-void mapButtonToLED(int buttonRow, int buttonCol, int &ledRow, int &ledCol);
+void mapPhysicalToGrid(int row, int col, int &y, int &x);
+uint8_t readColumn(int col);
 bool detectGridOrientation();
 
-void mapButtonToLED(int buttonRow, int buttonCol, int &ledRow, int &ledCol) {
-    // Handle button to LED mapping based on rotation and flipping
-    ledRow = buttonRow;
-    ledCol = buttonCol;
+// Maps a physical position (row, col) to grid coordinates (y, x).
+// Only 0 and 180 degrees keep the 16x8 shape, both mappings are their own inverse.
+void mapPhysicalToGrid(int row, int col, int &y, int &x) {
+    y = row;
+    x = col;
 
-    // Apply rotation
-    switch (gridRotation) {
-        case 0: // No rotation
-            break;
-        case 1: // 90 degree rotation
-            {
-                int temp = ledRow;
-                ledRow = ledCol;
-                ledCol = NUM_COLS - 1 - temp;
-            }
-            break;
-        case 2: // 180 degree rotation
-            ledRow = NUM_ROWS - 1 - ledRow;
-            ledCol = NUM_COLS - 1 - ledCol;
-            break;
-        case 3: // 270 degree rotation
-            {
-                int temp = ledRow;
-                ledRow = NUM_ROWS - 1 - ledCol;
-                ledCol = temp;
-            }
-            break;
+    if (gridRotation == 2) {
+        y = NUM_ROWS - 1 - y;
+        x = NUM_COLS - 1 - x;
     }
 
-    // Apply flipping
-    if (flipHorizontal) ledCol = NUM_COLS - 1 - ledCol;
-    if (flipVertical) ledRow = NUM_ROWS - 1 - ledRow;
+    if (flipHorizontal) x = NUM_COLS - 1 - x;
+    if (flipVertical) y = NUM_ROWS - 1 - y;
+}
+
+// Drives one column low and returns the state of all rows as a bitmask (bit = row, 1 = pressed).
+uint8_t readColumn(int col) {
+    digitalWrite(COL_PINS[col], LOW);
+    delayMicroseconds(COL_SETTLE_US);
+    uint32_t in = ~gpio_get_all() & rowMask;
+    digitalWrite(COL_PINS[col], HIGH);
+    // let the row pull-ups recharge the row lines before the next column is selected
+    delayMicroseconds(COL_RELEASE_US);
+
+    uint8_t result = 0;
+    for (int row = 0; row < NUM_ROWS; row++) {
+        if (in & (1u << ROW_PINS[row])) result |= (1 << row);
+    }
+    return result;
 }
 
 bool detectGridOrientation() {
-    bool buttonPressed = false;
-    // Scan to check which button is pressed
-    for (int col = 0; col < NUM_COLS; col++) {
-        digitalWrite(COL_PINS[col], LOW);
-        for (int row = 0; row < NUM_ROWS; row++) {
-            if (!digitalRead(ROW_PINS[row])) {
-                buttonPressed = true;
-                // Set grid rotation based on pressed button
-                if (row == 0 && col == 0) {
-                    gridRotation = 0;
-                } else if (row == 0 && col == NUM_COLS - 1) {
-                    gridRotation = 1;
-                } else if (row == NUM_ROWS - 1 && col == NUM_COLS - 1) {
-                    gridRotation = 2;
-                } else if (row == NUM_ROWS - 1 && col == 0) {
-                    gridRotation = 3;
-                }
-                digitalWrite(COL_PINS[col], HIGH);
-                return buttonPressed;
-            }
-        }
-        digitalWrite(COL_PINS[col], HIGH);
-    }
-    // If no button is pressed, set default orientation
     gridRotation = DEFAULT_ROTATION;
-    return buttonPressed;
+    if (readColumn(0) & 0x01) {
+        gridRotation = 0;
+        return true;
+    }
+    if (readColumn(NUM_COLS - 1) & (1 << (NUM_ROWS - 1))) {
+        gridRotation = 2;
+        return true;
+    }
+    return false;
 }
 
 void setup() {
@@ -122,11 +114,13 @@ void setup() {
 
     for (int i = 0; i < NUM_ROWS; i++) {
         pinMode(ROW_PINS[i], INPUT_PULLUP);
+        rowMask |= (1u << ROW_PINS[i]);
     }
     for (int i = 0; i < NUM_COLS; i++) {
         pinMode(COL_PINS[i], OUTPUT);
         digitalWrite(COL_PINS[i], HIGH);
     }
+    delay(1);
 
     detectGridOrientation();
 
@@ -141,24 +135,12 @@ void setup() {
     mdp.sendSysSize();
     mdp.sendSysRotation();
     pixels.begin();
-
-    // Initialize MPU-6050
-    Wire.setSCL(21);
-    Wire.setSDA(20);
-    Wire.begin();
-
-    if (mpu.begin()) {
-        hasTiltSensor = true;
-        Serial.println("MPU6050 Found!");
-
-        mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
-        mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-    }
+    pixels.clear();
+    pixels.show();
 }
 
 void loop() {
     static unsigned long lastCheck = 0;
-    static unsigned long lastTiltCheck = 0;
     unsigned long currentMillis = millis();
 
     mdp.poll();
@@ -168,26 +150,17 @@ void loop() {
         scanButtonMatrix();
         updateLEDMatrix();
     }
-
-    // Send tilt data every 100ms
-    if (hasTiltSensor && currentMillis - lastTiltCheck >= 100) {
-        lastTiltCheck = currentMillis;
-        sendTiltData();
-    }
 }
 
 void scanButtonMatrix() {
-    for (int row = 0; row < NUM_ROWS; row++) {
-        for (int col = 0; col < NUM_COLS; col++) {
-            digitalWrite(COL_PINS[col], LOW);
-            bool currentState = !digitalRead(ROW_PINS[row]);
-            digitalWrite(COL_PINS[col], HIGH);
-
-            int ledRow, ledCol;
-            mapButtonToLED(row, col, ledRow, ledCol);
-
+    for (int col = 0; col < NUM_COLS; col++) {
+        uint8_t pressed = readColumn(col);
+        for (int row = 0; row < NUM_ROWS; row++) {
+            bool currentState = pressed & (1 << row);
             if (currentState != buttonStates[row][col]) {
-                mdp.sendGridKey(ledCol, ledRow, currentState);
+                int x, y;
+                mapPhysicalToGrid(row, col, y, x);
+                mdp.sendGridKey(x, y, currentState);
                 buttonStates[row][col] = currentState;
             }
         }
@@ -195,28 +168,30 @@ void scanButtonMatrix() {
 }
 
 void updateLEDMatrix() {
+    static uint8_t level[NUM_LEDS];
+    uint32_t sum = 0;
+
+    // LED chain runs row by row, 16 LEDs per row, starting at the top left
     for (int row = 0; row < NUM_ROWS; row++) {
         for (int col = 0; col < NUM_COLS; col++) {
-            int ledRow, ledCol;
-            mapButtonToLED(row, col, ledRow, ledCol);
-            uint8_t intensity = gammaTable[mdp.leds[row * NUM_ROWS + col]] * gammaAdj;
-            pixels.setPixelColor(ledRow * NUM_ROWS + ledCol, pixels.Color(intensity / 2, intensity, intensity / 2));
+            int x, y;
+            mapPhysicalToGrid(row, col, y, x);
+            uint8_t intensity = gammaTable[mdp.leds[y * NUM_COLS + x] & 0x0F] * gammaAdj;
+            level[row * NUM_COLS + col] = intensity;
+            // colour is (i/2, i, i/2)
+            sum += intensity + 2 * (intensity / 2);
         }
     }
+
+    // estimated current in mA
+    uint32_t budget = MAX_LED_CURRENT_MA - NUM_LEDS * LED_MA_IDLE;
+    uint32_t estimate = sum * LED_MA_PER_CHANNEL / 255;
+    uint32_t scale = 256;
+    if (estimate > budget) scale = budget * 256 / estimate;
+
+    for (int i = 0; i < NUM_LEDS; i++) {
+        uint8_t intensity = (level[i] * scale) >> 8;
+        pixels.setPixelColor(i, pixels.Color(intensity / 2, intensity, intensity / 2));
+    }
     pixels.show();
-}
-
-void sendTiltData() {
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp);
-
-    // TODO: Include Rotation here?
-    int16_t axis[3];
-    axis[0] = (int16_t)(a.acceleration.x * 4) + 128;
-    axis[1] = (int16_t)(-a.acceleration.y * 4) + 128;
-    axis[2] = (int16_t)(a.acceleration.z * 4) + 128;
-
-    int8_t *axisbytes = (int8_t *)axis;
-
-    mdp.sendTiltEvent(0,axisbytes[0],axisbytes[1],axisbytes[2],axisbytes[3],axisbytes[4],axisbytes[5]);
 }

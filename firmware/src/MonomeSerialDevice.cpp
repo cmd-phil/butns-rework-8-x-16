@@ -480,9 +480,7 @@ void MonomeSerialDevice::processSerial() {
       readX = Serial.read();               // x offset
       while (readX > 16) { readX += 16; }  // hacky shit to deal with negative numbers from rotation
       readX &= 0xF8;                       // floor the offset to 0 or 8
-      readY = Serial.read();               // y offset
-      while (readY > 16) { readY += 16; }  // hacky shit to deal with negative numbers from rotation
-      readY &= 0xF8;                       // floor the offset to 0 or 8
+      readY = Serial.read();               // row number
       for (x = 0; x < 8; x++) {
         if (x % 2 == 0) {
           intensity = Serial.read();
@@ -502,9 +500,7 @@ void MonomeSerialDevice::processSerial() {
       break;
 
     case 0x1C:                             // /prefix/led/level/col x y d[8]
-      readX = Serial.read();               // x offset
-      while (readX > 16) { readX += 16; }  // hacky shit to deal with negative numbers from rotation
-      readX &= 0xF8;                       // floor the offset to 0 or 8
+      readX = Serial.read();               // column number
       readY = Serial.read();               // y offset
       while (readY > 16) { readY += 16; }  // hacky shit to deal with negative numbers from rotation
       readY &= 0xF8;                       // floor the offset to 0 or 8

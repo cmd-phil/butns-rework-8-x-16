@@ -59,7 +59,8 @@ printDisplayClips     = true;
 
 //Defined here so you can define the "Main" PCB using these if wanted
 pcbLength           = 99; // front to back (X axis)
-pcbWidth            = 99; // side to side (Y axis)
+// 16 columns: 99 mm + 8 * 11.43 mm
+pcbWidth            = 99 + 8 * 11.43; // side to side (Y axis)
 pcbThickness        = 1.6; 
 standoffHeight      = 15; //-- How much the PCB needs to be raised from the base to leave room for solderings and whatnot
 standoffDiameter    = 6;
@@ -247,6 +248,7 @@ inspectZfromBottom        = true;       //-> View from the inspection cut up
 pcbStands = 
 [
     [4+91/2, 4+91/2, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
+    [4+91/2, 4+91/2+8*11.43, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
     /*[4+91, 4+91, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
     [4, 4+91, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
     [4+91, 4, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
@@ -283,8 +285,8 @@ connectors   =
 [
     [4, 4,       -pcbThickness, 2.6, 5, 2.5, 6.5],
     [4+91, 4,    -pcbThickness, 2.6, 5, 2.5, 6.5],
-    [4, 4+91,    -pcbThickness, 2.6, 5, 2.5, 6.5],
-    [4+91, 4+91, -pcbThickness, 2.6, 5, 2.5, 6.5],
+    [4, 4+91+8*11.43,    -pcbThickness, 2.6, 5, 2.5, 6.5],
+    [4+91, 4+91+8*11.43, -pcbThickness, 2.6, 5, 2.5, 6.5],
 ];
 
 
@@ -346,8 +348,9 @@ cutoutsBase =
 ];
 cutoutsLid  = 
 [
-for(x=[0:8-1]) for(y=[0:8-1])
-[10 / 2 + x * 11.43, 10 / 2 + 1 + y * 11.4, 9, 9, 1, yappRoundedRect, 20]
+// X: 8 rows, pitch 11.4 mm. Y: 16 columns, pitch 11.43 mm.
+for(x=[0:8-1]) for(y=[0:16-1])
+[10 / 2 + x * 11.4, 10 / 2 + 1 + y * 11.43, 9, 9, 1, yappRoundedRect, 20]
 ];
 
 cutoutsFront =  
@@ -387,7 +390,8 @@ cutoutsRight =
 //-------------------------------------------------------------------
 snapJoins   =   
 [
-    [99/2, 30, yappLeft, yappRight, yappFront, yappBack, yappCenter, yappSymmetric, yappRectangle]
+    [99/2, 30, yappLeft, yappRight, yappCenter, yappSymmetric, yappRectangle],
+    [99/2, 30, yappFront, yappBack, yappCenter, yappSymmetric, yappRectangle]
 ];
 
 //===================================================================

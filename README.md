@@ -1,11 +1,10 @@
 # Overview
 
-small grid 64 clone heavily based on previous work by [hugelton/btns](https://github.com/hugelton/Btns).
+128 button grid as a rework of jhbruhns 64 clone heavily based on previous work by [hugelton/btns](https://github.com/hugelton/Btns).
 
 ![overview image](docs/overview.jpeg)
 
 Uses a Rasperry Pi Pico Microcontroller, NeoPixel RGB LEDs (SK6812), cheap buttons and a 3d-printed case and button-overlay.
-Includes hardware and firmware support for an optional tilt-sensor.
 
 # Building
 

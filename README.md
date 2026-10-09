@@ -25,6 +25,10 @@ The firmware limits the estimated LED current to `MAX_LED_CURRENT_MA` (400 mA, s
 One SK6812-EC20 draws up to 12 mA per colour channel plus about 1 mA idle, so 128 LEDs at full level exceed what a USB port and the 0.2 mm supply traces can deliver.
 Hold the top-left key while plugging in for the default orientation, the bottom-right key for 180 degrees.
 
+Maximum LED brightness: hold the two top corner keys for one second. Then press any key, its column sets the maximum (column 1 = 1/16, column 16 = 100 %).
+The selected column lights up at that brightness. The mode ends 3 seconds after the last key press and the value is stored in flash.
+No key events are sent to the host while the mode is active.
+
 # Building
 
 It is highly recommended to order the PCB assembled from JLCPCB. That assembly will include everything other than the parts in the BOM.

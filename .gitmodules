@@ -1,3 +1,12 @@
 [submodule "hardware/butns/case/YAPP_Box"]
 	path = hardware/case/YAPP_Box
 	url = https://github.com/mrWheel/YAPP_Box.git
+[submodule "firmware-iii/lib/iii"]
+	path = firmware-iii/lib/iii
+	url = https://codeberg.org/tehn/iii
+[submodule "firmware-iii/lib/lua"]
+	path = firmware-iii/lib/lua
+	url = https://github.com/lua/lua
+[submodule "firmware-iii/lib/littlefs"]
+	path = firmware-iii/lib/littlefs
+	url = https://github.com/littlefs-project/littlefs

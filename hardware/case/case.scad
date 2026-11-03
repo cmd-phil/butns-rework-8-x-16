@@ -590,10 +590,55 @@ displayMounts =
 
 //===========================================================
 // origin = box(0,0,0)
+//-- Light blockers: walls hanging from the lid between the key columns, in front
+//-- of each LED, so less light reaches the cap of the next column.
+//-- Coordinates in PCB terms (X = rows from the top edge, Y = columns from the
+//-- left edge); hook coordinates are PCB + 0.5 (padding), z = 0 is the inside of
+//-- the lid plane, negative z points to the PCB.
+lightBlockers      = true;
+blkRows            = 8;
+blkCols            = 16;
+blkPitchX          = 11.4;    // rows
+blkPitchY          = 11.43;   // columns
+blkRow0            = 9.51;    // centre of the first key row
+blkSw0             = 9.495;   // centre of the first switch column
+blkHoleEdge        = 7.935;   // switch centre -> left edge of the next lid hole
+blkThinFrom        = 7.3;     // thin part starts here (clears the cap tabs of the mat)
+blkThickFrom       = 5.855;   // thick part starts here (clears the cap and the 100 nF pads)
+blkHalfLen         = 2.9;     // half length along the row (clears the diagonal ribs)
+blkTabHalf         = 1.9;     // half width of the band with cap tabs
+blkDiodeHalf       = 1.6;     // half width of the band above the diode of the next key
+blkDiodeClear      = 1.5;     // bottom above the PCB over the diode (diode about 1.1 mm)
+blkPcbClear        = 0.4;     // bottom above the PCB elsewhere
+blkPadding         = 0.5;     // hook origin -> PCB origin
+
+module blockerBox(x0, x1, y0, y1, bottomAbovePcb)
+{
+  gap   = (baseWallHeight + lidWallHeight) - (standoffHeight + pcbThickness);
+  depth = gap - bottomAbovePcb;
+  translate([blkPadding + x0, blkPadding + y0, -depth])
+    cube([x1 - x0, y1 - y0, depth + 0.5]);   // 0.5 mm into the lid plane
+}
+
 module hookLidInside()
 {
-  //if (printMessages) echo("hookLidInside() ..");
-  
+  if (lightBlockers)
+  {
+    for (r = [0 : blkRows - 1], c = [0 : blkCols - 2])
+    {
+      xr  = blkRow0 + r * blkPitchX;
+      ysw = blkSw0 + c * blkPitchY;
+      yE  = ysw + blkHoleEdge;
+      // thin part above the diode of the next key
+      blockerBox(xr - blkDiodeHalf, xr + blkDiodeHalf, ysw + blkThinFrom, yE, blkDiodeClear);
+      // thin part beside the diode
+      blockerBox(xr - blkTabHalf, xr - blkDiodeHalf, ysw + blkThinFrom, yE, blkPcbClear);
+      blockerBox(xr + blkDiodeHalf, xr + blkTabHalf, ysw + blkThinFrom, yE, blkPcbClear);
+      // thick ends, outside the cap tabs
+      blockerBox(xr - blkHalfLen, xr - blkTabHalf, ysw + blkThickFrom, yE, blkPcbClear);
+      blockerBox(xr + blkTabHalf, xr + blkHalfLen, ysw + blkThickFrom, yE, blkPcbClear);
+    }
+  }
 } // hookLidInside()
   
 

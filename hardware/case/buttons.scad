@@ -82,5 +82,9 @@ color("blue") translate([0, 0, inlayheight]) difference() {
  for(x=[0:cols-1]) for(y=[0:rows-1])
 translate([x * px, y * py, height / 2]) roundedcube([s+rubberslack, s + rubberslack, height], center = true, radius = 1.5, apply_to = "zmax");
 
+ // slots for the light blockers of the lid (case.scad), 0.3 mm clearance
+ for(x=[0:cols-2]) for(y=[0:rows-1])
+ translate([x * px + 4.55, y * py - 3.2, -1]) cube([2.68, 6.4, 3]);
+
 }
 }

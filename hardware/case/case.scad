@@ -62,7 +62,7 @@ pcbLength           = 99; // front to back (X axis)
 // 16 columns: 99 mm + 8 * 11.43 mm
 pcbWidth            = 99 + 8 * 11.43; // side to side (Y axis)
 pcbThickness        = 1.6; 
-standoffHeight      = 15; //-- How much the PCB needs to be raised from the base to leave room for solderings and whatnot
+standoffHeight      = 5;  //-- How much the PCB needs to be raised from the base to leave room for solderings and whatnot
 standoffDiameter    = 6;
 standoffPinDiameter = 2.5;
 standoffHoleSlack   = 0.4;
@@ -130,7 +130,7 @@ lidPlaneThickness   = 2;
 //                       + basePlaneThickness
 //-- space between pcb and lidPlane :=
 //--      (bottonWallHeight+lidWallHeight) - (standoffHeight+pcbThickness)
-baseWallHeight      = 18;
+baseWallHeight      = 8;  // 18 in the original; PCB 10 mm lower, space above the PCB unchanged
 lidWallHeight       = 2;
 
 //-- e where base and lid off box can overlap

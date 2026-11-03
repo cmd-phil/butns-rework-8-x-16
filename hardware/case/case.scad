@@ -611,6 +611,16 @@ blkDiodeHalf       = 1.6;     // half width of the band above the diode of the n
 blkDiodeClear      = 1.5;     // bottom above the PCB over the diode (diode about 1.1 mm)
 blkPcbClear        = 0.4;     // bottom above the PCB elsewhere
 blkPadding         = 0.5;     // hook origin -> PCB origin
+//-- v2: also walls above and below every LED, in the gaps between the key rows
+lightBlockersRowGaps = true;
+blkLedDeepFrom     = 1.665;   // switch centre -> start of the deep part (LED - 2.5 mm)
+blkLedDeepTo       = 4.005;   // deep part ends before the diagonal ribs of the mat
+blkLedTo           = 6.665;   // shallow part over the ribs ends here (LED + 2.5 mm)
+blkRibClear        = 2.0;     // bottom of the shallow part above the PCB (ribs end at about 1.8)
+blkRowGapFrom      = 4.59;    // row centre -> lower lid hole edge + 0.1 mm
+blkRowGapTo        = 6.79;    // row centre -> next lid hole edge - 0.1 mm
+blkScrews          = [[49.5, 49.5], [49.5, 140.94]];  // inner screws H5, H6 (PCB X, Y)
+blkScrewClearR     = 3.3;     // keep the screw heads free up to blkRibClear
 
 module blockerBox(x0, x1, y0, y1, bottomAbovePcb)
 {
@@ -637,6 +647,25 @@ module hookLidInside()
       // thick ends, outside the cap tabs
       blockerBox(xr - blkHalfLen, xr - blkTabHalf, ysw + blkThickFrom, yE, blkPcbClear);
       blockerBox(xr + blkTabHalf, xr + blkHalfLen, ysw + blkThickFrom, yE, blkPcbClear);
+    }
+    if (lightBlockersRowGaps)
+    {
+      gap = (baseWallHeight + lidWallHeight) - (standoffHeight + pcbThickness);
+      difference()
+      {
+        for (r = [0 : blkRows - 2], c = [0 : blkCols - 1])
+        {
+          xr  = blkRow0 + r * blkPitchX;
+          ysw = blkSw0 + c * blkPitchY;
+          // deep part next to the LED, down to blkPcbClear
+          blockerBox(xr + blkRowGapFrom, xr + blkRowGapTo, ysw + blkLedDeepFrom, ysw + blkLedDeepTo, blkPcbClear);
+          // shallow part above the diagonal ribs
+          blockerBox(xr + blkRowGapFrom, xr + blkRowGapTo, ysw + blkLedDeepTo, ysw + blkLedTo, blkRibClear);
+        }
+        for (sc = blkScrews)
+          translate([blkPadding + sc[0], blkPadding + sc[1], -gap - 1])
+            cylinder(r = blkScrewClearR, h = 1 + blkRibClear, $fn = 48);
+      }
     }
   }
 } // hookLidInside()

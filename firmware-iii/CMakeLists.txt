@@ -56,6 +56,8 @@ add_executable(butns-iii
     src/monome.c
     src/settings.c
     src/usb_descriptors.c
+    src/lua_mem.c
+    src/iii_patches.c
     ${III_DIR}/flash.c
     ${III_DIR}/fs.c
     ${III_DIR}/iii.c
@@ -76,10 +78,19 @@ target_include_directories(butns-iii PRIVATE
     ${GEN_DIR}
 )
 
-target_compile_definitions(butns-iii PRIVATE PICO_DIVIDER_IN_RAM=1)
+# PICO_MALLOC_PANIC=0: a failed allocation returns NULL (Lua then collects
+# garbage and retries) instead of halting the firmware
+target_compile_definitions(butns-iii PRIVATE PICO_DIVIDER_IN_RAM=1 PICO_MALLOC_PANIC=0)
 
-# reset the LED colour state whenever iii (re)starts its Lua VM
-target_link_options(butns-iii PRIVATE -Wl,--wrap=vm_init)
+# vm_init: reset the LED colour state and fix lib.lua when iii (re)starts its Lua VM
+# lua_newstate, vm_test_script: Lua memory management (src/lua_mem.c)
+# serial: bounded serial output (src/iii_patches.c)
+target_link_options(butns-iii PRIVATE
+    -Wl,--wrap=vm_init
+    -Wl,--wrap=lua_newstate
+    -Wl,--wrap=vm_test_script
+    -Wl,--wrap=serial
+)
 
 target_link_libraries(butns-iii PRIVATE
     lua

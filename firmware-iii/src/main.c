@@ -29,6 +29,21 @@ static void core1_entry(void) {
   while (1) tight_loop_contents();
 }
 
+// Core 0 starts its stack at the top of scratch Y (4 KB) and grows down into
+// scratch X, where the SDK puts the top of core 1's stack. Compiling a large
+// Lua script needs about 4 to 5 KB, so core 1 runs on the lower half of
+// scratch X instead (left empty by the SDK) and core 0 has 6 KB.
+extern uint32_t __scratch_x_end__, __StackOneBottom;
+
+static void launch_core1(void) {
+  uint32_t *bottom = &__scratch_x_end__;
+  size_t size = (size_t)((uint8_t *)&__StackOneBottom - (uint8_t *)bottom);
+  if (size >= 512)
+    multicore_launch_core1_with_stack(core1_entry, bottom, size);
+  else
+    multicore_launch_core1(core1_entry);
+}
+
 // short colour flash on the top row: blue = iii, green = monome
 static void show_mode(void) {
   for (int x = 0; x < NUM_COLS; x++) leds_rgb(x, 0, 0, g_mode == MODE_III ? 40 : 160, g_mode == MODE_III ? 255 : 40);
@@ -64,7 +79,7 @@ int main(void) {
   show_mode();
 
   tud_init(BOARD_TUD_RHPORT);
-  multicore_launch_core1(core1_entry);
+  launch_core1();
 
   if (g_mode == MODE_III) {
     device_init();

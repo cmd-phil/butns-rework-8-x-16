@@ -34,7 +34,13 @@
 #define SETTINGS_HOLD_MS 1000
 #define SETTINGS_TIMEOUT_MS 3000
 
-#define DEVICE_VERSION "butns16x8-iii-1.0"
+// Lua memory, see lua_mem.c. Pause 100: a new GC cycle starts right after the
+// previous one; iii's default (250) lets large scripts outgrow the RAM.
+#define LUA_GC_PAUSE 100
+#define LUA_GC_STEPMUL 200
+#define LUA_HEAP_RESERVE (40 * 1024)  // heap kept free for iii's own buffers
+
+#define DEVICE_VERSION "butns16x8-iii-1.1"
 
 // 0 = iii (Lua), 1 = monome serial protocol; stored by iii's flash_write_mode()
 #define MODE_III 0

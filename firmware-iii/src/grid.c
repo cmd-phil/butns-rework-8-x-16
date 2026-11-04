@@ -76,8 +76,10 @@ const char *device_help_txt() { return help_txt; }
 
 // reset the LED state whenever iii starts a new VM (boot, upload, reset)
 extern void __real_vm_init(bool run_script);
+extern void iii_fix_lib(void);
 void __wrap_vm_init(bool run_script) {
   leds_reset(true);
+  iii_fix_lib();
   __real_vm_init(run_script);
 }
 

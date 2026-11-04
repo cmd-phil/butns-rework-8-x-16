@@ -34,6 +34,21 @@ The colour functions follow the NeoTrellis iii firmware and the [diii NeoTrellis
 
 All other functions (metros, MIDI, file system, REPL) come from iii unchanged.
 
+## Memory
+
+The RP2040 leaves about 219 KB of RAM for Lua and iii's buffers. The firmware changes three things compared to plain iii v1.1.2 (`src/lua_mem.c`):
+
+- **Garbage collector:** incremental with pause 100 instead of 250, so the heap stays close to the live data. With the default, stepiii (about 130 KB live) outgrew the RAM within about 20 s and the firmware halted.
+- **Limit:** Lua may use the RAM minus 40 KB (`LUA_HEAP_RESERVE`), the rest stays free for an upload (32 KB buffer) and for loading a script. At the limit Lua collects garbage and retries; if that does not help, the script gets a `not enough memory` error and the device keeps running.
+- **Upload next to a large script:** iii compiles an uploaded file inside the running Lua state. If that runs out of memory, the running script is stopped first (message `-- not enough memory next to the running script, stopping it`).
+
+`mem()` in the REPL prints the memory Lua uses in KB.
+
+Two problems of iii v1.1.2 are worked around in `src/iii_patches.c`:
+
+- `serial()` wrote past its 16 KB buffer when a script kept raising errors while no host read the USB serial port. Messages that do not fit are now dropped.
+- `pset_write()` dropped trailing zeros of integers (0 was stored as nothing, 120 as 12). The firmware fixes the line in `lib.lua` on flash when it starts. Preset files written before the fix stay broken and have to be deleted.
+
 ## LED current
 
 The firmware estimates the current of every frame and scales the whole frame down above `MAX_LED_CURRENT_MA` (400 mA, `src/config.h`). One SK6812-EC20 draws up to 12 mA per colour channel plus about 1 mA idle.

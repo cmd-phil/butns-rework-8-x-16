@@ -345,6 +345,10 @@ connectors   =
 //-------------------------------------------------------------------
 cutoutsBase = 
 [
+  // pin hole for the BOOTSEL button of the Pico (button faces the base).
+  // Pico U1 centre at PCB (26.73, 25.78), USB end at y = 0.28;
+  // BOOTSEL about 12.6 mm from the USB end, 3.6 mm towards pin 1
+  [23.13, 12.88, 0, 0, 1.75, yappCircle, yappCenter]
 ];
 cutoutsLid  = 
 [

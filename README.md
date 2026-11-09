@@ -1,7 +1,6 @@
 # Overview
 
 128 button grid as a rework of jhbruhns 64 clone heavily based on previous work by [hugelton/btns](https://github.com/hugelton/Btns).
-The overview image shows the original 8x8 version.
 
 ![overview image](docs/overview.jpeg)
 

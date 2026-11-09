@@ -81,6 +81,44 @@
 			)
 		)
 	)
+	(sheet
+		(at 128.27 100.33)
+		(size 24.13 10.16)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "898761e3-8bbe-51b4-a165-2fb7e261aa93")
+		(property "Sheetname" "Frontend2"
+			(at 128.27 99.6184 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "butns-frontend2.kicad_sch"
+			(at 128.27 111.0746 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "butns"
+				(path "/1c3520c0-bca7-4d12-8c9b-3ac18c44338d"
+					(page "4")
+				)
+			)
+		)
+	)
 	(sheet_instances
 		(path "/"
 			(page "1")

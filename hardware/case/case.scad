@@ -59,9 +59,10 @@ printDisplayClips     = true;
 
 //Defined here so you can define the "Main" PCB using these if wanted
 pcbLength           = 99; // front to back (X axis)
-pcbWidth            = 99; // side to side (Y axis)
+// 16 columns: 99 mm + 8 * 11.43 mm
+pcbWidth            = 99 + 8 * 11.43; // side to side (Y axis)
 pcbThickness        = 1.6; 
-standoffHeight      = 15; //-- How much the PCB needs to be raised from the base to leave room for solderings and whatnot
+standoffHeight      = 5;  //-- How much the PCB needs to be raised from the base to leave room for solderings and whatnot
 standoffDiameter    = 6;
 standoffPinDiameter = 2.5;
 standoffHoleSlack   = 0.4;
@@ -129,7 +130,7 @@ lidPlaneThickness   = 2;
 //                       + basePlaneThickness
 //-- space between pcb and lidPlane :=
 //--      (bottonWallHeight+lidWallHeight) - (standoffHeight+pcbThickness)
-baseWallHeight      = 18;
+baseWallHeight      = 8;  // 18 in the original; PCB 10 mm lower, space above the PCB unchanged
 lidWallHeight       = 2;
 
 //-- e where base and lid off box can overlap
@@ -247,6 +248,7 @@ inspectZfromBottom        = true;       //-> View from the inspection cut up
 pcbStands = 
 [
     [4+91/2, 4+91/2, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
+    [4+91/2, 4+91/2+8*11.43, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
     /*[4+91, 4+91, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
     [4, 4+91, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
     [4+91, 4, standoffHeight, pcbThickness, standoffDiameter, 2.5, 0, 0, 0, yappBaseOnly, yappHole],
@@ -283,8 +285,8 @@ connectors   =
 [
     [4, 4,       -pcbThickness, 2.6, 5, 2.5, 6.5],
     [4+91, 4,    -pcbThickness, 2.6, 5, 2.5, 6.5],
-    [4, 4+91,    -pcbThickness, 2.6, 5, 2.5, 6.5],
-    [4+91, 4+91, -pcbThickness, 2.6, 5, 2.5, 6.5],
+    [4, 4+91+8*11.43,    -pcbThickness, 2.6, 5, 2.5, 6.5],
+    [4+91, 4+91+8*11.43, -pcbThickness, 2.6, 5, 2.5, 6.5],
 ];
 
 
@@ -343,11 +345,16 @@ connectors   =
 //-------------------------------------------------------------------
 cutoutsBase = 
 [
+  // pin hole for the BOOTSEL button of the Pico (button faces the base).
+  // Pico U1 centre at PCB (26.73, 25.78), USB end at y = 0.28;
+  // BOOTSEL about 12.6 mm from the USB end, 3.6 mm towards pin 1
+  [23.13, 12.88, 0, 0, 1.75, yappCircle, yappCenter]
 ];
 cutoutsLid  = 
 [
-for(x=[0:8-1]) for(y=[0:8-1])
-[10 / 2 + x * 11.43, 10 / 2 + 1 + y * 11.4, 9, 9, 1, yappRoundedRect, 20]
+// X: 8 rows, pitch 11.4 mm. Y: 16 columns, pitch 11.43 mm.
+for(x=[0:8-1]) for(y=[0:16-1])
+[10 / 2 + x * 11.4, 10 / 2 + 1 + y * 11.43, 9, 9, 1, yappRoundedRect, 20]
 ];
 
 cutoutsFront =  
@@ -387,7 +394,8 @@ cutoutsRight =
 //-------------------------------------------------------------------
 snapJoins   =   
 [
-    [99/2, 30, yappLeft, yappRight, yappFront, yappBack, yappCenter, yappSymmetric, yappRectangle]
+    [99/2, 30, yappLeft, yappRight, yappCenter, yappSymmetric, yappRectangle],
+    [99/2, 30, yappFront, yappBack, yappCenter, yappSymmetric, yappRectangle]
 ];
 
 //===================================================================
@@ -586,10 +594,84 @@ displayMounts =
 
 //===========================================================
 // origin = box(0,0,0)
+//-- Light blockers: walls hanging from the lid between the key columns, in front
+//-- of each LED, so less light reaches the cap of the next column.
+//-- Coordinates in PCB terms (X = rows from the top edge, Y = columns from the
+//-- left edge); hook coordinates are PCB + 0.5 (padding), z = 0 is the inside of
+//-- the lid plane, negative z points to the PCB.
+lightBlockers      = true;
+blkRows            = 8;
+blkCols            = 16;
+blkPitchX          = 11.4;    // rows
+blkPitchY          = 11.43;   // columns
+blkRow0            = 9.51;    // centre of the first key row
+blkSw0             = 9.495;   // centre of the first switch column
+blkHoleEdge        = 7.935;   // switch centre -> left edge of the next lid hole
+blkThinFrom        = 7.3;     // thin part starts here (clears the cap tabs of the mat)
+blkThickFrom       = 5.855;   // thick part starts here (clears the cap and the 100 nF pads)
+blkHalfLen         = 2.9;     // half length along the row (clears the diagonal ribs)
+blkTabHalf         = 1.9;     // half width of the band with cap tabs
+blkDiodeHalf       = 1.6;     // half width of the band above the diode of the next key
+blkDiodeClear      = 1.5;     // bottom above the PCB over the diode (diode about 1.1 mm)
+blkPcbClear        = 0.4;     // bottom above the PCB elsewhere
+blkPadding         = 0.5;     // hook origin -> PCB origin
+//-- v2: also walls above and below every LED, in the gaps between the key rows
+lightBlockersRowGaps = true;
+blkLedDeepFrom     = 1.665;   // switch centre -> start of the deep part (LED - 2.5 mm)
+blkLedDeepTo       = 4.005;   // deep part ends before the diagonal ribs of the mat
+blkLedTo           = 6.665;   // shallow part over the ribs ends here (LED + 2.5 mm)
+blkRibClear        = 2.0;     // bottom of the shallow part above the PCB (ribs end at about 1.8)
+blkRowGapFrom      = 4.59;    // row centre -> lower lid hole edge + 0.1 mm
+blkRowGapTo        = 6.79;    // row centre -> next lid hole edge - 0.1 mm
+blkScrews          = [[49.5, 49.5], [49.5, 140.94]];  // inner screws H5, H6 (PCB X, Y)
+blkScrewClearR     = 3.3;     // keep the screw heads free up to blkRibClear
+
+module blockerBox(x0, x1, y0, y1, bottomAbovePcb)
+{
+  gap   = (baseWallHeight + lidWallHeight) - (standoffHeight + pcbThickness);
+  depth = gap - bottomAbovePcb;
+  translate([blkPadding + x0, blkPadding + y0, -depth])
+    cube([x1 - x0, y1 - y0, depth + 0.5]);   // 0.5 mm into the lid plane
+}
+
 module hookLidInside()
 {
-  //if (printMessages) echo("hookLidInside() ..");
-  
+  if (lightBlockers)
+  {
+    for (r = [0 : blkRows - 1], c = [0 : blkCols - 2])
+    {
+      xr  = blkRow0 + r * blkPitchX;
+      ysw = blkSw0 + c * blkPitchY;
+      yE  = ysw + blkHoleEdge;
+      // thin part above the diode of the next key
+      blockerBox(xr - blkDiodeHalf, xr + blkDiodeHalf, ysw + blkThinFrom, yE, blkDiodeClear);
+      // thin part beside the diode
+      blockerBox(xr - blkTabHalf, xr - blkDiodeHalf, ysw + blkThinFrom, yE, blkPcbClear);
+      blockerBox(xr + blkDiodeHalf, xr + blkTabHalf, ysw + blkThinFrom, yE, blkPcbClear);
+      // thick ends, outside the cap tabs
+      blockerBox(xr - blkHalfLen, xr - blkTabHalf, ysw + blkThickFrom, yE, blkPcbClear);
+      blockerBox(xr + blkTabHalf, xr + blkHalfLen, ysw + blkThickFrom, yE, blkPcbClear);
+    }
+    if (lightBlockersRowGaps)
+    {
+      gap = (baseWallHeight + lidWallHeight) - (standoffHeight + pcbThickness);
+      difference()
+      {
+        for (r = [0 : blkRows - 2], c = [0 : blkCols - 1])
+        {
+          xr  = blkRow0 + r * blkPitchX;
+          ysw = blkSw0 + c * blkPitchY;
+          // deep part next to the LED, down to blkPcbClear
+          blockerBox(xr + blkRowGapFrom, xr + blkRowGapTo, ysw + blkLedDeepFrom, ysw + blkLedDeepTo, blkPcbClear);
+          // shallow part above the diagonal ribs
+          blockerBox(xr + blkRowGapFrom, xr + blkRowGapTo, ysw + blkLedDeepTo, ysw + blkLedTo, blkRibClear);
+        }
+        for (sc = blkScrews)
+          translate([blkPadding + sc[0], blkPadding + sc[1], -gap - 1])
+            cylinder(r = blkScrewClearR, h = 1 + blkRibClear, $fn = 48);
+      }
+    }
+  }
 } // hookLidInside()
   
 

@@ -2,7 +2,7 @@
 
 128 button grid as a rework of jhbruhns 64 clone heavily based on previous work by [hugelton/btns](https://github.com/hugelton/Btns).
 
-![overview image](docs/overview.jpeg)
+![overview image](docs/overview-16x8.jpeg)
 
 Uses a Rasperry Pi Pico Microcontroller, NeoPixel RGB LEDs (SK6812), cheap buttons and a 3d-printed case and button-overlay.
 The tilt-sensor of the 8x8 version is not available: all usable GPIOs are needed for the 8x16 matrix.
